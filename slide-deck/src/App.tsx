@@ -1,15 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useSlideScale } from './lib/use-slide-scale';
-import { slides } from './slides';
+import { decks, type DeckVersion } from './lib/deck-config';
+import { VersionToggle } from './components/VersionToggle';
 
 export default function App() {
+  const [version, setVersion] = useState<DeckVersion>('v1');
   const [current, setCurrent] = useState(0);
   const scale = useSlideScale();
-  const total = slides.length;
+  const deck = decks[version];
+  const total = deck.slides.length;
 
   const goNext = useCallback(() => setCurrent((c) => Math.min(c + 1, total - 1)), [total]);
   const goPrev = useCallback(() => setCurrent((c) => Math.max(c - 1, 0)), []);
+
+  const toggleVersion = useCallback(() => {
+    setVersion((v) => (v === 'v1' ? 'v2' : 'v1'));
+    setCurrent(0);
+  }, []);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -19,11 +27,16 @@ export default function App() {
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         goPrev();
+      } else if (e.key === 'v' || e.key === 'V') {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
+        e.preventDefault();
+        toggleVersion();
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, toggleVersion]);
 
   const handleClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -34,7 +47,7 @@ export default function App() {
     else goPrev();
   };
 
-  const CurrentSlide = slides[current];
+  const CurrentSlide = deck.slides[current];
 
   return (
     <div
@@ -63,8 +76,15 @@ export default function App() {
         }}
       >
         <AnimatePresence mode="wait">
-          <CurrentSlide key={current} />
+          <CurrentSlide key={`${version}-${current}`} />
         </AnimatePresence>
+
+        {/* Version toggle */}
+        <VersionToggle
+          version={version}
+          onToggle={toggleVersion}
+          labels={[decks.v1.label, decks.v2.label]}
+        />
       </div>
 
       {/* Progress bar */}
